@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Financial Switching Node Operator Console</title>
+    <style>
+        body { font-family: monospace; background: #0e121a; color: #d1d4dc; padding: 20px; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 1000px; margin: 0 auto; }
+        .card { background: #161b26; border: 1px solid #2d3139; padding: 20px; border-radius: 4px; }
+        input, select { width: 100%; background: #0e121a; border: 1px solid #2d3139; color: #fff; padding: 8px; margin: 8px 0; box-sizing: border-box; font-family: monospace; }
+        button { background: #2f80ed; color: white; font-weight: bold; border: none; padding: 12px; cursor: pointer; width: 100%; font-family: monospace; text-transform: uppercase; }
+        .btn-settle { background: #27ae60; margin-top: 15px; }
+        pre { background: #000; padding: 12px; border-radius: 4px; font-size: 11px; white-space: pre-wrap; overflow-x: auto; color: #56ff56; max-height: 250px;}
+    </style>
+</head>
+<body>
+
+<h1 style="text-align:center; color: #fff;">Financial Node Operator Engine</h1>
+<div class="grid-layout">
+    
+    <!-- Left Hand: Payment Processing Form Input Fields -->
+    <div class="card">
+        <h3>Point-Of-Sale Terminal</h3>
+        <form id="payForm">
+            <label>Credit Card Number (PAN)</label>
+            <!-- 4111222233334444 passes Luhn. 4111222233334445 fails. -->
+            <input type="text" id="pan" placeholder="4111222233334444" required>
+            
+            <label>Expiry Window / Card CVV</label>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="exp" placeholder="09/30" required>
+                <input type="text" id="cvv" placeholder="423" required>
+            </div>
+
+            <label>Amount (USD)</label>
+            <input type="number" id="amt" value="75.25" step="0.01" required>
+
+            <button type="submit">Route Authorization Request</button>
+        </form>
+        <div style="margin-top:15px;">
+            <p style="font-size:11px; color:#8b949e;">* Typing an invalid number pattern throws a <b>Response 14 Code</b> instantly via Luhn checks.</p>
+        </div>
+    </div>
+
+    <!-- Right Hand: Settlement Operations Actions & Live Logs Window -->
+    <div class="card">
+        <h3>Batch Management & Network Logs</h3>
+        <p>Trigger an asynchronous settlement file generation to clear current authorized transactions down into a real banking system format.</p>
+        <button id="settleBtn" class="btn-settle">Execute Midnight ACH Settlement Batch</button>
+        
+        <h4 style="margin-top:20px; color:#fff;">Live System Output:</h4>
+        <pre id="logs">Waiting for transaction payloads...</pre>
+    </div>
+
+</div>
+
+<script>
+    const logsEl = document.getElementById('logs');
+
+    // Handle Card Authorizations Submit Actions
+    document.getElementById('payForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        logsEl.textContent = "Beginning Local Edge Verification Tasks...\n";
+
+        const payload = {
+            cardNumber: document.getElementById('pan').value,
+            expiry: document.getElementById('exp').value,
+            cvv: document.getElementById('cvv').value,
+            amount: document.getElementById('amt').value
+        };
+
+        try {
+            const res = await fetch('/gateway/v1/authorize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            logsEl.textContent += `[HTTP Status: ${res.status}]\n` + JSON.stringify(data, null, 2);
+        } catch (err) {
+            logsEl.textContent += `Fatal Connectivity Network Glitch: ${err.message}`;
+        }
+    });
+
+    // Handle Triggering Daily Settlement Batches Actions
+    document.getElementById('settleBtn').addEventListener('click', async () => {
+        logsEl.textContent = "Opening Batch Ledger... Scanning for authorized records...\n";
+        try {
+            const res = await fetch('/gateway/v1/settle-batch', { method: 'POST' });
+            if(res.status === 204) {
+                logsEl.textContent += "System Flag: Clearing Vault Empty. Nothing to capture.";
+                return;
+            }
+            const data = await res.json();
+            logsEl.textContent += `[HTTP Status: ${res.status}]\n` + JSON.stringify(data, null, 2);
+        } catch (err) {
+            logsEl.textContent += `Batch Processing Core Failure: ${err.message}`;
+        }
+    });
+</script>
+</body>
+</html>
